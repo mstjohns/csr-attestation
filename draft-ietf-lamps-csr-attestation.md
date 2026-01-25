@@ -99,7 +99,7 @@ informative:
 
 Certification Authorities (CAs) issuing certificates to Public Key Infrastructure (PKI) end entities may require a certificate signing request (CSR) to include additional verifiable information to confirm policy compliance. For example, a CA may require an end entity to demonstrate that the private key corresponding to a CSR's public key is secured by a hardware security module (HSM), is not exportable, etc. The process of generating, transmitting, and verifying  additional information required by the CA is called remote attestation. While work is currently underway to standardize various aspects of  remote attestation, a variety of proprietary mechanisms have been in use for years, particularly regarding protection of private keys.
 
-This specification defines an ASN.1 structure for
+This specification defines ASN.1 structures for
 remote attestation that can accommodate proprietary and standardized
 attestation mechanisms, as well as an attribute and an extension to carry the structure in PKCS#10 and Certificate
 Request Message Format (CRMF) messages, respectively.
@@ -108,7 +108,7 @@ Request Message Format (CRMF) messages, respectively.
 
 # Introduction
 
-Certification Authorities (CAs) issuing certificates to PKI end entities may require a certificate signing request (CSR) to include verifiable attestations that contain claims regarding the platform used by the end entity to generate the key pair for which a certificate is sought. At the time of writing, the most pressing example of the need for remote attestation in certificate enrollment is the Code-Signing Baseline Requirements (CSBR) document maintained by the CA/Browser Forum [CSBR]. The [CSBR] requires compliant CAs to "ensure that a Subscriber's Private Key is generated, stored, and used in a secure environment that has controls to prevent theft or misuse". This requirement is a natural fit to enforce via remote attestation.
+Certification Authorities (CAs) issuing certificates to PKI end entities may require a certificate signing request (CSR) to include verifiable attestations that contain claims regarding the platform used by the end entity to generate the key pair for which a certificate is sought, and claims of attributes of the key pair with respect to its protection, use and extractability. At the time of writing, the most pressing example of the need for remote attestation in certificate enrollment is the Code-Signing Baseline Requirements (CSBR) document maintained by the CA/Browser Forum [CSBR]. The [CSBR] requires compliant CAs to "ensure that a Subscriber's Private Key is generated, stored, and used in a secure environment that has controls to prevent theft or misuse". This requirement is a natural fit to enforce via remote attestation.
 
 This specification defines an attribute and an extension that allow for conveyance of verifiable attestations in several Certificate Signing Request (CSR) formats, including PKCS#10 [RFC2986] or Certificate Request Message Format (CRMF) [RFC4211] messages. Given several standard and proprietary remote attestation technologies are in use, this specification is intended to be as technology-agnostic as is feasible with respect to implemented and future remote attestation technologies. This aligns with the fact that a CA may wish to provide support for a variety of types of devices but cannot dictate what format a device uses to represent attestations.
 
@@ -180,7 +180,7 @@ ATTESTATION-STATEMENT ::= TYPE-IDENTIFIER
 
 AttestationStatement ::= SEQUENCE {
    type   ATTESTATION-STATEMENT.&id({AttestationStatementSet}),
-   bindsPublicKey BOOLEAN DEFAULT TRUE,
+   bindsPublicKey [0] BOOLEAN DEFAULT TRUE,
    stmt   ATTESTATION-STATEMENT.&Type({AttestationStatementSet}{@type}),
    attrs  Attributes OPTIONAL
 }
@@ -275,7 +275,7 @@ ext-attestations EXTENSION ::= {
 
 The Extension variant illustrated in {{code-extensions}} is intended only for use within CRMF CSRs and is NOT RECOMMENDED to be used within X.509 certificates due to the privacy implications of publishing information about the end entity's hardware environment.
 
-Due to the nature of the PKIX ASN.1 classes {{RFC5912}}, there are multiple ways to convey multiple attestation statements: by including multiple copies of `attr-attestations` or `ext-attestations`, multiple values within the attribute or extension, and finally, by including multiple `AttestationStatement` structures within an `AttestationBundle`. The latter is the preferred way to carry multiple Attestations statements. Implementations MUST NOT place multiple copies of `attr-attestations` into a PKCS#10 CSR due to the `COUNTS MAX 1` declaration. In a CRMF CSR, implementers SHOULD NOT place multiple `AttestationBundle` instances in `ext-attestations`.
+The `AttestationBundle` structure permits the inclusion of multiple different types of `AttestationStatement` structures for a given certificate request. Per {{RFC5280}}, an Extensions structure may only contain a single copy of an Extension with a given type OID.  Similarly, Attributes is defined as a "SET OF Attribute" and may only contain a single copy of an Attribute with a given type OID.  Per the declaration of `attr-attestations`, the body of the defined attestation Attribute may contain only a single copy of `AttestationBundle`.
 
 # IANA Considerations
 
@@ -318,7 +318,7 @@ the registration template below, and receive a three-week review period on
 the [spasm] mailing list, with the advice of one or more Designated
 Experts {{RFC8126}}.  However, to allow for the allocation of values
 prior to publication, the Designated Experts may approve registration
-once they are satisfied that such a specification will be published.
+once they are satisfied that such a specification will be published.  The referenced document MUST contain an ATTESTATION-STATEMENT declaration consistent with the OID, Declaration Name and Type field.
 
 Registration requests sent to the mailing list for review should use
 an appropriate subject (e.g., "Request to register attestation
@@ -326,7 +326,7 @@ attestation: example").
 
 IANA must only accept registry updates from the Designated Experts
 and should direct all requests for registration to the review mailing
-list.
+list.  
 
 ### Registration Template
 
@@ -334,6 +334,8 @@ The registry has the following columns:
 
 - OID: The OID number, which has already been allocated. IANA does
 not allocate OID numbers for use with this registry.
+
+- Declaration name: The left side of the ::= ATTESTATION-STATEMENT declaration.
 
 - Type: The ASN.1 type corresponding to the given OID.
 
@@ -346,28 +348,23 @@ including URIs that can be used to retrieve copies of the documents.
 An indication of the relevant sections may also be included but is not
 required.
 
-- Change Controller: The entity that controls the listed data format.
-For data formats specified in Standards Track RFCs, list the "IESG".
-For others, give the name of the responsible party.
-This does not necessarily have to be a standards body, for example
-in the case of proprietary data formats the Reference may be to a company or a
-publicly-available reference implementation.  In most cases the
-third party requesting registration in this registry will also be the
-party that registered the OID. As the intention is for this registry to be a
-helpful reference, rather than a normative list, a fair amount of
-discretion is left to the Designated Expert.
-
 ### Initial Registry Contents
 
 The initial registry contents is shown in the table below.
-It lists entries for several attestation encoding OIDs including an entry for the Conceptual Message Wrapper (CMW) {{I-D.ietf-rats-msg-wrap}}.
+It lists an entry for an ATTESTATION-STATEMENT for the Conceptual Message Wrapper (CMW) {{I-D.ietf-rats-msg-wrap}}.  The matching declaration is:
+
+~~~
+ev-CMW ATTESTATION-STATEMENT ::= {
+    TYPE CMW IDENTIFIED BY id-pe-cmw
+}
+~~~
 
 * CMW
   * OID: 1 3 6 1 5 5 7 1 35
+  * Declaration name ev-CMW
   * Type: CMW
   * Description: id-pe-cmw
   * Reference(s): {{I-D.ietf-rats-msg-wrap}}
-  * Change Controller: IETF
 
 The current registry values can be retrieved from the IANA online website.
 
